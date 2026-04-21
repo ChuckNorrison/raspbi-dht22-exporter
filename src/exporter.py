@@ -15,10 +15,6 @@ import Adafruit_DHT
 SENSOR = Adafruit_DHT.DHT22
 LOGFORMAT = "%(asctime)s - %(levelname)s [%(name)s] %(threadName)s %(message)s"
 
-# Global error counters
-read_errors = 0
-consecutive_failures = 0
-
 class CustomCollector:
     """Custom Prometheus collector with robust error handling"""
 
@@ -30,8 +26,6 @@ class CustomCollector:
 
     def collect(self):
         """Collect metrics with comprehensive error handling"""
-        global read_errors, consecutive_failures
-
         temperature = None
         humidity = None
 
@@ -48,18 +42,13 @@ class CustomCollector:
             if not (0 <= humidity <= 100) or not (-50 <= temperature <= 80):
                 raise ValueError(f"Implausible values: temp={temperature}, hum={humidity}")
 
-            # Reset failure counter on success
-            consecutive_failures = 0
-
             self.logger.debug(
                 "Successfully read - Temp: %.1f°C, Humidity: %.1f%%", temperature, humidity
             )
 
         except Exception as e:  # Catch all sensor-related errors
-            read_errors += 1
-            consecutive_failures += 1
             self.logger.warning(
-                "Failed to read DHT22 (attempt %d): %s", consecutive_failures, str(e)
+                "Failed to read DHT22: %s", str(e)
             )
 
             # Return last known good values or NaN-like behavior (Prometheus handles None)
@@ -68,7 +57,7 @@ class CustomCollector:
 
         # === Expose sensor metrics ===
         temp_gauge = GaugeMetricFamily(
-            "dht22_temperature_celsius",
+            "temperature_in_celsius",
             "Temperature in Celsius",
             labels=["node"]
         )
@@ -76,32 +65,12 @@ class CustomCollector:
         yield temp_gauge
 
         hum_gauge = GaugeMetricFamily(
-            "dht22_humidity_percent",
+            "humidity_in_percent",
             "Relative humidity in percent",
             labels=["node"]
         )
         hum_gauge.add_metric([self.node], humidity)
         yield hum_gauge
-
-        # === Exporter health metrics ===
-        error_counter = CounterMetricFamily(
-            "dht22_read_errors_total",
-            "Total number of failed sensor reads",
-            labels=["node"]
-        )
-        error_counter.add_metric([self.node], read_errors)
-        yield error_counter
-
-        failure_gauge = GaugeMetricFamily(
-            "dht22_consecutive_failures",
-            "Current number of consecutive read failures",
-            labels=["node"]
-        )
-        failure_gauge.add_metric([self.node], consecutive_failures)
-        yield failure_gauge
-
-        # Uptime / last successful read could be added if you track timestamps
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prometheus DHT22 sensor exporter")
