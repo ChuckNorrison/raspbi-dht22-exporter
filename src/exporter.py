@@ -36,7 +36,7 @@ class DHT22Collector:
         now = time.time()
 
         if self.last_read_time == 0.0:
-            self.last_read_time = now + self.interval
+            self.last_read_time = now
             self.logger.info("First sensor read scheduled in %d seconds", self.interval)
             return
         
