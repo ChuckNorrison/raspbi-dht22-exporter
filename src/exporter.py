@@ -34,6 +34,11 @@ class DHT22Collector:
     def read_sensor(self):
         """Read sensor in background thread"""
         now = time.time()
+
+        if self.last_read_time == 0.0:
+            self.last_read_time = now + self.interval
+            self.logger.info("First sensor read scheduled in %d seconds", self.interval)
+            return
         
         if now - self.last_read_time < self.interval:
             return  # too early
