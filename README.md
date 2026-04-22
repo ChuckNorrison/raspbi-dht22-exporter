@@ -4,6 +4,8 @@
 
 Prometheus Endpoint, written in Python to read DHT11 1wire sensor and exposes temperature values as a prometheus metric.
 
+This fork has improved error handling and make use of background thread to read sensor. Prometheus can no longer abuse the sensor with frequent reads. 
+
 ## Prerequisites - Wiring the sensor
 
 I bought the sensor from Amazn which is shipped with the following board attached
@@ -82,6 +84,25 @@ $ docker run -it -p 9103:9103 lukasbahr/raspbi-dht22-exporter:<VERSION>
 or refer to the supplied Makefile.
 
 You can also download it from docker hub via `docker pull lukasbahr/raspbi-dht22-exporter:<VERSION>`
+
+## As a systemd service
+
+Change path to your python3 (maybe create a venv first) and path to your exporter.py.
+
+```bash
+[Unit]
+Description=DHT22 humidity sensor prometheus exporter
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/mnt/dht22-exporter_venv/bin/python3 /opt/dht22-exporter/exporter.py --port=9295 --gpiopin=4 --interval=120 --loglevel=INFO
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ## Open ToDo's
 
